@@ -1,10 +1,34 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 #define LINE_BUFFER_SIZE 1024
 #define TOK_BUFFER_SIZE 32
 #define TOK_DELIM " \t\r\n\a"
+
+int sea_execute(char **args){
+	pid_t pid,wpid;
+	int status;
+
+	pid = fork();
+	if (pid == 0) {
+		if (execvp(args[0],args) == -1) {
+			perror("sea: command execution error\n");
+			exit(EXIT_FAILURE);
+		}
+	} else if (pid < 0) {
+		perror("sea: function fork error\n");
+		exit(EXIT_FAILURE);
+	} else {
+		do {
+			wpid = waitpid(pid, &status, WUNTRACED);
+		} while (!WIFEXITED(status) && !WIFSIGNALED(status)); 
+	}
+
+	return 1;
+}
 
 char **sea_parseline(char *line)
 {
@@ -83,8 +107,7 @@ void sea_loop(void)
 		printf("> ");
 		line = sea_readline();
 		args = sea_parseline(line);
-		//status = sea_execute(args);
-		printf("%s",args[0]);
+		status = sea_execute(args);
 	} while(status);
 }
 
